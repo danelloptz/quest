@@ -10,47 +10,51 @@ const adminRoutes = require('./routes/adminRoutes');
 const app = express();
 const PORT = process.env.PORT || 5001;
 
-// Разрешённые источники
+// Список явно разрешенных origins
 const allowedOrigins = [
   'https://danelloptz.github.io',
   'http://localhost:5173',
   'http://localhost:3000',
-  process.env.CLIENT_URL, // Позволяет задавать URL фронтенда через переменную окружения в Render
+  process.env.CLIENT_URL,
 ].filter(Boolean);
 
-const corsOptions = {
-  origin: (origin, callback) => {
-    // Разрешаем запросы без Origin (например, curl, Postman, мобильные приложения)
-    if (!origin) return callback(null, true);
+// Блокируем падение сервера при необработанных ошибках
+process.on('uncaughtException', (err) => {
+  console.error('[CRITICAL] Uncaught Exception:', err);
+});
 
-    // Если точно совпадает с разрешенным списком
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('[CRITICAL] Unhandled Rejection at:', promise, 'reason:', reason);
+});
 
-    // Если это поддомен github.io или vercel.app (опционально, для удобства тестирования)
-    if (origin.endsWith('.github.io') || origin.endsWith('.vercel.app') || origin.endsWith('.onrender.com')) {
-      return callback(null, true);
-    }
+// Кастомный middleware CORS: надежно проставляет заголовки даже при 500/502 ошибках
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
 
-    console.error(`[CORS Blocked] Origin: ${origin}`);
-    return callback(new Error(`Origin not allowed: ${origin}`));
-  },
+  // Разрешаем origin, если он в списке или подходит по шаблону (github.io, vercel, onrender)
+  const isAllowed = !origin || 
+    allowedOrigins.includes(origin) || 
+    origin.endsWith('.github.io') || 
+    origin.endsWith('.vercel.app') || 
+    origin.endsWith('.onrender.com');
 
-  credentials: true,
+  if (isAllowed && origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  } else if (!origin) {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  }
 
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept');
 
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+  // Ответ на preflight OPTIONS запрос
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
 
-  optionsSuccessStatus: 200,
-};
-
-// 1. Включаем CORS middleware для всех маршрутов
-app.use(cors(corsOptions));
-
-// 2. Обработка всех OPTIONS предзапросов
-app.options('*', cors(corsOptions));
+  next();
+});
 
 app.use(express.json());
 app.use(cookieParser());
@@ -61,27 +65,18 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/attempts', attemptRoutes);
 
 // Обработка 404
-app.use((req, res, next) => {
+app.use((req, res) => {
   res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Маршрут не найден' } });
 });
 
-// Обработка ошибок
+// Глобальная обработка ошибок (гарантирует отдачу JSON вместо 502/HTML)
 app.use((err, req, res, next) => {
-  console.error('Unhandled Error:', err);
-
-  if (err.message && err.message.startsWith('Origin not allowed:')) {
-    return res.status(403).json({
-      error: {
-        code: 'CORS_ERROR',
-        message: 'Origin not allowed',
-      },
-    });
-  }
+  console.error('Unhandled Server Error:', err);
 
   return res.status(500).json({
     error: {
       code: 'INTERNAL_ERROR',
-      message: 'Произошла внутренняя ошибка сервера',
+      message: err.message || 'Произошла внутренняя ошибка сервера',
     },
   });
 });

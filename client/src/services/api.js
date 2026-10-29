@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: 'https://quest-0dt9.onrender.com/api',
   withCredentials: true,
 });
 

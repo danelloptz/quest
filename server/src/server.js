@@ -10,11 +10,23 @@ const adminRoutes = require('./routes/adminRoutes');
 const app = express();
 const PORT = process.env.PORT || 5001;
 
+const allowedOrigins = [
+    'http://localhost:5173',
+    'https://danelloptz.github.io',
+];
+
 app.use(
-  cors({
-    origin: process.env.CLIENT_URL || 'http://localhost:5173',
-    credentials: true,
-  })
+    cors({
+        origin: (origin, callback) => {
+            // Разрешаем запросы без Origin, например от curl
+            if (!origin || allowedOrigins.includes(origin)) {
+                return callback(null, true);
+            }
+
+            return callback(new Error('CORS: Origin not allowed'));
+        },
+        credentials: true,
+    })
 );
 
 app.use(express.json());

@@ -115,6 +115,7 @@ async function getOrCreateAttempt(req, res) {
             })),
           };
         }
+        // коммент
 
         await tx.attemptQuestion.create({
           data: {

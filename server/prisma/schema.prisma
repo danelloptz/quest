@@ -1,0 +1,124 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Admin {
+  id           String   @id @default(uuid())
+  login        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Team {
+  id        String    @id @default(uuid())
+  name      String    @unique
+  isActive  Boolean   @default(true)
+  players   Player[]
+  questions Question[] @relation("TeamQuestions")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Player {
+  id        String   @id @default(uuid())
+  firstName String
+  lastName  String
+  teamId    String
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Question {
+  id            String   @id @default(uuid())
+  type          String   // TEAM_SELECTION | TEXT_INPUT | MULTIPLE_CHOICE
+  text          String
+  correctTeamId String?
+  correctTeam   Team?    @relation("TeamQuestions", fields: [correctTeamId], references: [id], onDelete: SetNull)
+  isActive      Boolean  @default(true)
+  sortOrder     Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  acceptedAnswers QuestionAcceptedAnswer[]
+  options         QuestionOption[]
+}
+
+model QuestionAcceptedAnswer {
+  id             String   @id @default(uuid())
+  questionId     String
+  question       Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  text           String
+  normalizedText String
+}
+
+model QuestionOption {
+  id         String   @id @default(uuid())
+  questionId String
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  text       String
+  isCorrect  Boolean  @default(false)
+  sortOrder  Int      @default(0)
+}
+
+model ContestSettings {
+  id            String   @id @default(uuid())
+  questionCount Int      @default(12)
+  updatedAt     DateTime @updatedAt
+}
+
+model Attempt {
+  id               String   @id @default(uuid())
+  participantToken String   @unique
+  participantName  String
+  status           String   @default("IN_PROGRESS") // IN_PROGRESS | COMPLETED
+  questionCount    Int
+  startedAt        DateTime @default(now())
+  finishedAt       DateTime?
+  score            Int?
+  durationSeconds  Int?
+  createdAt        DateTime @default(now())
+
+  attemptQuestions AttemptQuestion[]
+  answers          AttemptAnswer[]
+}
+
+model AttemptQuestion {
+  id               String   @id @default(uuid())
+  attemptId        String
+  attempt          Attempt  @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  questionId       String
+  position         Int
+  questionType     String
+  questionText     String
+  
+  // JSON Snapshots for historical integrity
+  snapshotData     String   // Dynamic payload based on question type (teams options, accepted answers, choice options)
+  
+  createdAt        DateTime @default(now())
+
+  @@unique([attemptId, questionId])
+  @@unique([attemptId, position])
+}
+
+model AttemptAnswer {
+  id               String   @id @default(uuid())
+  attemptId        String
+  attempt          Attempt  @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  questionId       String
+  
+  selectedTeamId   String?
+  textAnswer       String?
+  selectedOptionId String?
+  
+  isCorrect        Boolean?
+  answeredAt       DateTime @default(now())
+
+  @@unique([attemptId, questionId])
+}

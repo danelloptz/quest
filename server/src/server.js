@@ -15,19 +15,15 @@ const allowedOrigins = [
     'https://danelloptz.github.io',
 ];
 
-app.use(
-    cors({
-        origin: (origin, callback) => {
-            // Разрешаем запросы без Origin, например от curl
-            if (!origin || allowedOrigins.includes(origin)) {
-                return callback(null, true);
-            }
+app.use(cors({
+    origin: allowedOrigins,
+    credentials: true,
+}));
 
-            return callback(new Error('CORS: Origin not allowed'));
-        },
-        credentials: true,
-    })
-);
+app.options(/.*/, cors({
+    origin: allowedOrigins,
+    credentials: true,
+}));
 
 app.use(express.json());
 app.use(cookieParser());

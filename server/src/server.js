@@ -10,19 +10,12 @@ const adminRoutes = require('./routes/adminRoutes');
 const app = express();
 const PORT = process.env.PORT || 5001;
 
-const allowedOrigins = [
-    'http://localhost:5173',
-    'https://danelloptz.github.io',
-];
-
 app.use(cors({
-    origin: allowedOrigins,
-    credentials: true,
-}));
-
-app.options(/.*/, cors({
-    origin: allowedOrigins,
-    credentials: true,
+    origin: [
+        'https://danelloptz.github.io',
+        'http://localhost:5173'
+    ],
+    credentials: true
 }));
 
 app.use(express.json());

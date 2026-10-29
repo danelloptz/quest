@@ -22,25 +22,45 @@ const corsOptions = {
         }
 
         console.error(`CORS blocked origin: ${origin}`);
+
         return callback(new Error(`Origin not allowed: ${origin}`));
     },
+
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+
+    methods: [
+        'GET',
+        'POST',
+        'PUT',
+        'PATCH',
+        'DELETE',
+        'OPTIONS',
+    ],
+
+    allowedHeaders: [
+        'Content-Type',
+        'Authorization',
+    ],
+
     optionsSuccessStatus: 204,
 };
 
-// CORS должен выполняться до маршрутов и обработчика ошибок
+// CORS должен подключаться до маршрутов
+// и обработчика ошибок.
 app.use(cors(corsOptions));
+
+// Обработка предварительных OPTIONS-запросов.
 app.options(/.*/, cors(corsOptions));
 
 app.use(express.json());
 app.use(cookieParser());
 
+// API-маршруты
 app.use('/api/admin/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/attempts', attemptRoutes);
 
+// Обработка ошибок
 app.use((err, req, res, next) => {
     console.error('Unhandled Error:', err);
 
@@ -53,7 +73,7 @@ app.use((err, req, res, next) => {
         });
     }
 
-    res.status(500).json({
+    return res.status(500).json({
         error: {
             code: 'INTERNAL_ERROR',
             message: 'Произошла внутренняя ошибка сервера',

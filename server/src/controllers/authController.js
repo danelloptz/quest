@@ -27,10 +27,11 @@ async function login(req, res) {
 
   res.cookie('admin_token', token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
+    secure: true,
+    sameSite: 'none',
+    path: '/',
     maxAge: 24 * 60 * 60 * 1000,
-  });
+});
 
   return res.json({ success: true, admin: { id: admin.id, login: admin.login } });
 }

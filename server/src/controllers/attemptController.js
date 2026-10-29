@@ -132,10 +132,39 @@ async function getOrCreateAttempt(req, res) {
     });
 
     return res.json({ attempt: newAttempt });
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({ error: { code: 'SERVER_ERROR', message: 'Ошибка при создании игры' } });
-  }
+    } catch (err) {
+        const errorDetails = {
+            name: err?.name || 'UnknownError',
+            message: err?.message || String(err),
+            code: err?.code || null,
+            meta: err?.meta || null,
+            clientVersion: err?.clientVersion || null,
+            stack: err?.stack || null,
+        };
+
+        // Подробная ошибка в логах Render
+        console.error(
+            '[POST /api/attempts] Ошибка при создании игры:',
+            JSON.stringify(errorDetails, null, 2)
+        );
+
+        const error = {
+            code: 'SERVER_ERROR',
+            message: 'Ошибка при создании игры',
+        };
+
+        // Включать только на время диагностики
+        if (process.env.DEBUG_ERRORS === 'true') {
+            error.details = {
+                name: errorDetails.name,
+                message: errorDetails.message,
+                code: errorDetails.code,
+                meta: errorDetails.meta,
+            };
+        }
+
+        return res.status(500).json({ error });
+    }
 }
 
 async function getAttemptDetails(req, res) {
